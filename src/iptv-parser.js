@@ -4,123 +4,156 @@
  * MORE INFO CAN BE FOUND AT https://github.com/MarketingPipeline/IPTV-Parser.js
  */
 
+// TODO figure out problem with import / content src when using dynamic import.. 
 
-import parser from "https://cdn.skypack.dev/iptv-playlist-parser@0.12.1"
+
+let parser;
+if (typeof process !== 'undefined' || typeof node !== 'undefined') {
+    try {
+        let fetch = require('node-fetch');
+    } catch (e) {
+        console.log('node-fetch is not installed. Please install node-fetch to use this script.');
+        if (typeof process !== 'undefined') {
+            process.exit(1);
+        }
+    }
+
+    try {
+        parser = require('iptv-playlist-parser');
+    } catch (e) {
+        console.log('iptv-playlist-parser is not installed. Please install iptv-playlist-parser to use this script.');
+        if (typeof process !== 'undefined') {
+            process.exit(1);
+        }
+    }
+
+} else {
+    /// Browser parser 
+    (async function() {
+        try {
+            parser = await import('https://cdn.skypack.dev/iptv-playlist-parser@0.12.1');
+            parser = parser.default
+            console.log(parser)
+        } catch (error) {
+            console.log("There was an error loading required modules for IPTV.js parser")
+        }
+    })();
+
+
+}
+
 
 
 export async function ParseM3U(url, isURL) {
 
-	/// CORE FUNCTION(s) FOR IPTV-Parser.js ///
+    /// CORE FUNCTION(s) FOR IPTV-Parser.js ///
 
 
-	// Fetch and Parse IPTV / M3U 
-	async function fetchAndParse(url_or_string, isURL) {
-
-		
-		
-		/// NO VALUE WAS PROVIDED TO PARSE... 
-		if (!url_or_string) {
-			if (isURL) {
-				throw {
-					iptv_parser_error: "URL to fetch is required"
-				}
-			} else {
-				throw {
-					iptv_parser_error: "Text to parse is required"
-				}
-			}
-		}
+    // Fetch and Parse IPTV / M3U 
+    async function fetchAndParse(url_or_string, isURL) {
 
 
 
-		let playlist = null;
-
-		if (isURL) {
-			/// FETCH & PARSE M3U FROM URL
-			const url = url_or_string
-			const rsp = await fetch(url),
-				data = await rsp.text();
-			if (rsp.status != 200) {
-				// HTTP STATUS ERROR
-				throw {
-					iptv_parser_error: `HTTP ${rsp.status} error`
-				}
-			}
-			playlist = data
-		} else {
-			// PARSE M3U FROM FILE
-			playlist = url_or_string
-		}
+        /// NO VALUE WAS PROVIDED TO PARSE... 
+        if (!url_or_string) {
+            if (isURL) {
+                throw {
+                    iptv_parser_error: "URL to fetch is required"
+                }
+            } else {
+                throw {
+                    iptv_parser_error: "Text to parse is required"
+                }
+            }
+        }
 
 
 
+        let playlist = null;
 
-
-		let foundData;
-
-		// CHECK IF PLAYLIST / M3U is valid...
-		try {
-			const m3uFile = await CheckIfValidPlayList(playlist)
-			// playlist was valid - return it!
-			return m3uFile
-		} catch (err) {
-			// return any errors if invalid!
-			return err
-		}
+        if (isURL) {
+            /// FETCH & PARSE M3U FROM URL
+            const url = url_or_string
+            const rsp = await fetch(url),
+                data = await rsp.text();
+            if (rsp.status != 200) {
+                // HTTP STATUS ERROR
+                throw {
+                    iptv_parser_error: `HTTP ${rsp.status} error`
+                }
+            }
+            playlist = data
+        } else {
+            // PARSE M3U FROM FILE
+            playlist = url_or_string
+        }
 
 
 
 
+        let foundData;
 
-		async function CheckIfValidPlayList(playlist) {
-			const content = playlist
-
-			let lines = content.split('\n').map(parseLine)
-			let firstLine = lines.find(l => l.index === 0)
-
-			if (!firstLine || !/^#EXTM3U/.test(firstLine.raw)) {
-				// PLAYLIST / M3U file is not valid :(
-				throw {
-					iptv_parser_error: "Playlist is not valid"
-				}
-
-			} else {
-				// Playlist was valid! 
-				const result = parser.parse(playlist)
-				/// return the data
-				return await result
-
-			}
-
-			function parseLine(line, index) {
-				return {
-					index,
-					raw: line
-				}
-			}
-		}
-
-	}
-	/// END OF CORE FUNCTION(s) for IPTV-Parser.js ///
+        // CHECK IF PLAYLIST / M3U is valid...
+        try {
+            const m3uFile = await CheckIfValidPlayList(playlist)
+            // playlist was valid - return it!
+            return m3uFile
+        } catch (err) {
+            // return any errors if invalid!
+            return err
+        }
 
 
 
-	/// CALL THE IPTV-Parser.JS //
-	try {
-		if (isURL) {
-			// FETCH & PARSE M3U  LINKS 
-			let result = await fetchAndParse(url, "url");
-			return result
-		} else {
-			// PARSE M3U FROM STRING
-			let result = await fetchAndParse(url);
-			return result
-		}
 
-	} catch (err) {
+        async function CheckIfValidPlayList(playlist) {
+            const content = playlist
 
-		// return any errors! 
-		return err
+            let lines = content.split('\n').map(parseLine)
+            let firstLine = lines.find(l => l.index === 0)
 
-	}
+            if (!firstLine || !/^#EXTM3U/.test(firstLine.raw)) {
+                // PLAYLIST / M3U file is not valid :(
+                throw {
+                    iptv_parser_error: "Playlist is not valid"
+                }
+
+            } else {
+                // Playlist was valid! 
+                const result = parser.parse(playlist)
+                /// return the data
+                return await result
+
+            }
+
+            function parseLine(line, index) {
+                return {
+                    index,
+                    raw: line
+                }
+            }
+        }
+
+    }
+    /// END OF CORE FUNCTION(s) for IPTV-Parser.js ///
+
+
+
+    /// CALL THE IPTV-Parser.JS //
+    try {
+        if (isURL) {
+            // FETCH & PARSE M3U  LINKS 
+            let result = await fetchAndParse(url, "url");
+            return result
+        } else {
+            // PARSE M3U FROM STRING
+            let result = await fetchAndParse(url);
+            return result
+        }
+
+    } catch (err) {
+        // return any errors! 
+        throw err
+
+    }
 }
